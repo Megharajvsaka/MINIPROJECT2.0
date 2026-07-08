@@ -34,3 +34,45 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Logs
+logs
+*.log
+
+# Runtime
+pids
+*.pid
+
+# OS
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+docker-compose.override.yml
+
+# Local certificates
+*.crt
+*.key
+
+# AWS
+.aws/
+
+# Terraform (future)
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Environment
+.env.production
+.env.development
+
+# Testing
+playwright-report/
+test-results/
+
+# Misc
+*.bak
+*.tmp

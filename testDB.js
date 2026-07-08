@@ -1,19 +1,18 @@
-import mongoose from "mongoose";
-import dotenv from "dotenv";
+const { MongoClient } = require("mongodb");
 
-dotenv.config();
+const uri =
+  "mongodb+srv://MiniProject:MiniProjectAtSuccess@fitnesstracker.oktdvrx.mongodb.net/?retryWrites=true&w=majority";
 
-const uri = process.env.MONGODB_URI;
+async function test() {
+  try {
+    const client = new MongoClient(uri);
+    await client.connect();
+    console.log("Connected successfully!");
+    await client.close();
+  } catch (err) {
+    console.error(err);
+  }
+}
 
-mongoose.connect(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  console.log("✅ MongoDB Atlas connected successfully");
-  process.exit(0);
-})
-.catch((err) => {
-  console.error("❌ MongoDB connection error:", err);
-  process.exit(1);
-});
+test();
+console.log("MONGODB_URI:", process.env.MONGODB_URI);
