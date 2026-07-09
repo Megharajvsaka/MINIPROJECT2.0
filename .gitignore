@@ -72,6 +72,7 @@ docker-compose.override.yml
 # Testing
 playwright-report/
 test-results/
+testDB.js
 
 # Misc
 *.bak
