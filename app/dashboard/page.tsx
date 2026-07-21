@@ -115,7 +115,7 @@ function DashboardContent() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                Here's your fitness overview for today.
+                Here&apos;s your fitness overview for today.
               </motion.p>
             </motion.div>
 
@@ -234,7 +234,7 @@ function DashboardContent() {
               <AnimatedCard className="p-6 xl:col-span-1" delay={0.8}>
                 <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
                   <TrendingUp className="h-5 w-5 text-green-400 mr-2" />
-                  Today's Progress
+                  Today&apos;s Progress
                 </h3>
                 
                 <div className="space-y-4">

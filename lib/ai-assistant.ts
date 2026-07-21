@@ -1,11 +1,32 @@
 import { getDB } from './mongodb';
 import { ObjectId } from 'mongodb';
 import Groq from 'groq-sdk';
+import { getConfig } from './config';
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+/**
+ * Lazy Singleton for Groq client.
+ *
+ * Pattern: Singleton + Lazy Initialization
+ *
+ * The Groq client is created only on first use (first API call),
+ * NOT at module import time. This is critical for Docker because:
+ * - During `npm run build`, Next.js imports all server modules.
+ * - At that point, GROQ_API_KEY is not available in the environment.
+ * - If we call `new Groq(...)` at the module level, it either throws or
+ *   creates a broken client with an undefined API key.
+ *
+ * By wrapping it in a getter, we defer initialization to request time,
+ * when the Docker container is actually running and env vars are set.
+ */
+let groqClient: Groq | null = null;
+
+function getGroqClient(): Groq {
+  if (!groqClient) {
+    const { groq } = getConfig();
+    groqClient = new Groq({ apiKey: groq.apiKey });
+  }
+  return groqClient;
+}
 
 export interface Message {
   _id?: ObjectId;
@@ -21,6 +42,19 @@ export interface ConversationHistory {
   userId: string;
   messages: Message[];
   lastUpdated: Date;
+}
+
+export interface WorkoutPreferences {
+  fitnessGoal?: string;
+  equipment?: string;
+  level?: 'beginner' | 'intermediate' | 'advanced';
+}
+
+type GroqMessageRole = 'system' | 'user' | 'assistant';
+
+interface GroqMessage {
+  role: GroqMessageRole;
+  content: string;
 }
 
 export const addUserMessage = (content: string, userId?: string): Message => {
@@ -51,17 +85,17 @@ export const getAssistantResponse = async (userMessage: string, userId?: string)
 
   try {
     // Get conversation history for context (last 10 messages)
-    let conversationContext: any[] = [];
+    let conversationContext: GroqMessage[] = [];
     if (userId) {
       const history = await getConversationHistory(userId, 10);
       conversationContext = history.map(msg => ({
-        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        role: (msg.role === 'assistant' ? 'assistant' : 'user') as GroqMessageRole,
         content: msg.content
       }));
     }
 
     // Call Groq API - using llama-3.3-70b-versatile (latest model!)
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroqClient().chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
         {
@@ -95,7 +129,7 @@ Keep responses concise (2-4 sentences), encouraging, and actionable. Use emojis 
     }
 
     return assistantMessage;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Groq API Error:', error);
     
     // Fallback response if API fails
@@ -112,7 +146,7 @@ Keep responses concise (2-4 sentences), encouraging, and actionable. Use emojis 
 
 export const getHydrationReminder = async (): Promise<string> => {
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroqClient().chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
         {
@@ -129,7 +163,7 @@ export const getHydrationReminder = async (): Promise<string> => {
     });
 
     return completion.choices[0]?.message?.content || "💧 Time for some water! Staying hydrated helps with recovery and performance.";
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Groq API Error:', error);
     const fallbackReminders = [
       "💧 Time for some water! Staying hydrated helps with recovery and performance.",
@@ -147,7 +181,7 @@ export const getWorkoutMotivation = async (status: 'missed' | 'completed'): Prom
       ? 'Give a short, enthusiastic congratulations message for completing a workout. Include an emoji and keep it under 40 words.'
       : 'Give a short, supportive and encouraging message for missing a workout. Focus on getting back on track tomorrow. Include an emoji and keep it under 40 words.';
 
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroqClient().chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages: [
         {
@@ -166,7 +200,7 @@ export const getWorkoutMotivation = async (status: 'missed' | 'completed'): Prom
     return completion.choices[0]?.message?.content || (status === 'completed' 
       ? "🎉 Awesome work! You crushed that workout!"
       : "Don't worry! Tomorrow is a new opportunity. You've got this! 💪");
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Groq API Error:', error);
     
     if (status === 'completed') {
@@ -191,7 +225,7 @@ export const getWorkoutMotivation = async (status: 'missed' | 'completed'): Prom
   }
 };
 
-export const getWorkoutSuggestion = async (preferences: any = {}): Promise<string> => {
+export const getWorkoutSuggestion = async (preferences: WorkoutPreferences = {}): Promise<string> => {
   try {
     const userContext = preferences.fitnessGoal 
       ? `My fitness goal is ${preferences.fitnessGoal}.` 
@@ -201,7 +235,7 @@ export const getWorkoutSuggestion = async (preferences: any = {}): Promise<strin
       ? `Available equipment: ${preferences.equipment}.` 
       : 'I have basic home equipment.';
 
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroqClient().chat.completions.create({
       model: 'llama3-8b-8192',
       messages: [
         {
@@ -218,7 +252,7 @@ export const getWorkoutSuggestion = async (preferences: any = {}): Promise<strin
     });
 
     return completion.choices[0]?.message?.content || "How about a 30-minute full-body workout? Try: Push-ups (3x12), Squats (3x15), Planks (3x30s), and Jumping Jacks (3x1min). 💪";
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Groq API Error:', error);
     const suggestions = [
       "How about a 30-minute full-body workout? Try: Push-ups (3x12), Squats (3x15), Planks (3x30s), and Jumping Jacks (3x1min).",

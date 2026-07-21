@@ -259,7 +259,7 @@ function WorkoutContent() {
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-white flex items-center">
                   <Calendar className="h-6 w-6 text-purple-400 mr-2" />
-                  Today's Workout
+                  Today&apos;s Workout
                 </h2>
               </div>
 

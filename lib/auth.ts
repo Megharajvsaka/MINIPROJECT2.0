@@ -3,8 +3,8 @@ import bcrypt from 'bcryptjs';
 import { getDB } from './mongodb';
 import { ObjectId } from 'mongodb';
 import { initializeUserGamification } from './gamification';
+import { getConfig } from './config';
 
-const JWT_SECRET = process.env.JWT_SECRET || '5kFyxgdUg42TG/K6AVdHZer55xUtb+GwJhbBRbR77K0=';
 
 export interface User {
   _id?: ObjectId;
@@ -31,12 +31,14 @@ export const comparePasswords = async (password: string, hashedPassword: string)
 };
 
 export const generateToken = (userId: string): string => {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
+  const { jwt: jwtConfig } = getConfig();
+  return jwt.sign({ userId }, jwtConfig.secret, { expiresIn: jwtConfig.expiresIn });
 };
 
 export const verifyToken = (token: string): { userId: string } | null => {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string };
+    const { jwt: jwtConfig } = getConfig();
+    return jwt.verify(token, jwtConfig.secret) as { userId: string };
   } catch {
     return null;
   }

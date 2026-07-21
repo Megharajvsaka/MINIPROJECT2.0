@@ -142,7 +142,7 @@ function FitnessContent() {
             <div className="mb-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
               <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
                 <TrendingUp className="h-5 w-5 text-blue-400 mr-2" />
-                This Week's Progress
+                This Week&apos;s Progress
               </h3>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">

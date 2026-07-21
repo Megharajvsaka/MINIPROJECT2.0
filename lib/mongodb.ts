@@ -1,4 +1,5 @@
 import { MongoClient, Db } from "mongodb";
+import { getConfig } from './config';
 
 const options = {
   maxPoolSize: 10,
@@ -9,20 +10,19 @@ const options = {
 let client: MongoClient | null = null;
 let clientPromise: Promise<MongoClient> | null = null;
 
+/**
+ * Lazy initialization — getClient() is only called at request time,
+ * never at module import time. This makes Docker builds safe because
+ * MONGODB_URI is only read when a real request comes in.
+ */
 async function getClient(): Promise<MongoClient> {
   if (clientPromise) {
     return clientPromise;
   }
 
-  const uri = process.env.MONGODB_URI;
+  const { mongodb } = getConfig();
 
-  if (!uri) {
-    throw new Error(
-      "Please define the MONGODB_URI environment variable."
-    );
-  }
-
-  client = new MongoClient(uri, options);
+  client = new MongoClient(mongodb.uri, options);
   clientPromise = client.connect();
 
   return clientPromise;
@@ -30,7 +30,8 @@ async function getClient(): Promise<MongoClient> {
 
 export async function getDB(): Promise<Db> {
   const client = await getClient();
-  return client.db("fittrackerDB");
+  const { mongodb } = getConfig();
+  return client.db(mongodb.dbName);
 }
 
 export async function testConnection(): Promise<boolean> {

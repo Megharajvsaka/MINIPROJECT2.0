@@ -1,7 +1,24 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  /**
+   * output: 'standalone'
+   *
+   * Tells Next.js to create a self-contained output in .next/standalone/
+   * that includes only the files needed to run the app — no full node_modules.
+   *
+   * This is the production-standard approach for Docker deployments:
+   * - Final Docker image goes from ~1 GB → ~200 MB
+   * - Only production dependencies are included
+   * - Runs with: node server.js (no npm needed in the container)
+   *
+   * Used by: Vercel, AWS Lambda, Google Cloud Run deployments
+   */
+  output: 'standalone',
   eslint: {
-    ignoreDuringBuilds: true,
+    // ESLint is now enabled during builds.
+    // This ensures code quality issues surface at build time, not in production.
+    // If you see errors here, fix them — do not suppress them.
+    ignoreDuringBuilds: false,
   },
   images: { 
     unoptimized: true 

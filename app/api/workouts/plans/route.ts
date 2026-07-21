@@ -1,86 +1,32 @@
 import { NextResponse } from 'next/server';
-import { verifyToken, findUserById } from '@/lib/auth';
+import { withAuth } from '@/lib/api-middleware';
 import { generateWorkoutPlan, getWorkoutPlansForUser } from '@/lib/workouts';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+export const GET = withAuth(async (_, { userId }) => {
+  const plans = await getWorkoutPlansForUser(userId);
+  return NextResponse.json({ plans });
+});
 
-    if (!token) {
-      return NextResponse.json(
-        { error: 'No token provided' },
-        { status: 401 }
-      );
-    }
+export const POST = withAuth(async (request, { userId }) => {
+  const { goal, startDate, weeks = 4 } = await request.json();
 
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    const plans = await getWorkoutPlansForUser(decoded.userId);
-
-    return NextResponse.json({ plans });
-  } catch (error) {
-    console.error('Get workout plans error:', error);
+  if (!goal || !startDate) {
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'Goal and start date are required' },
+      { status: 400 }
     );
   }
-}
 
-export async function POST(request: Request) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'No token provided' },
-        { status: 401 }
-      );
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    const { goal, startDate, weeks = 4 } = await request.json();
-
-    if (!goal || !startDate) {
-      return NextResponse.json(
-        { error: 'Goal and start date are required' },
-        { status: 400 }
-      );
-    }
-
-    const validGoals = ['weight_loss', 'muscle_gain', 'flexibility', 'endurance', 'general_fitness'];
-    if (!validGoals.includes(goal)) {
-      return NextResponse.json(
-        { error: 'Invalid goal specified' },
-        { status: 400 }
-      );
-    }
-
-    const plan = await generateWorkoutPlan(decoded.userId, goal, startDate, weeks);
-
-    return NextResponse.json({ plan });
-  } catch (error) {
-    console.error('Generate workout plan error:', error);
+  const validGoals = ['weight_loss', 'muscle_gain', 'flexibility', 'endurance', 'general_fitness'];
+  if (!validGoals.includes(goal)) {
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'Invalid goal specified' },
+      { status: 400 }
     );
   }
-}
+
+  const plan = await generateWorkoutPlan(userId, goal, startDate, weeks);
+  return NextResponse.json({ plan });
+});

@@ -1,89 +1,37 @@
 import { NextResponse } from 'next/server';
-import { verifyToken, findUserById } from '@/lib/auth';
+import { withAuth } from '@/lib/api-middleware';
 import { generateMealPlan, getMealPlansForUser } from '@/lib/nutrition';
+import { findUserById } from '@/lib/auth';
 
-export async function GET(request: Request) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+export const GET = withAuth(async (_, { userId }) => {
+  const mealPlans = await getMealPlansForUser(userId);
+  return NextResponse.json({ mealPlans });
+});
 
-    if (!token) {
-      return NextResponse.json(
-        { error: 'No token provided' },
-        { status: 401 }
-      );
-    }
+export const POST = withAuth(async (request, { userId }) => {
+  const { startDate, endDate } = await request.json();
 
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    const mealPlans = await getMealPlansForUser(decoded.userId);
-
-    return NextResponse.json({ mealPlans });
-  } catch (error) {
-    console.error('Get meal plans error:', error);
+  if (!startDate || !endDate) {
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: 'Start date and end date are required' },
+      { status: 400 }
     );
   }
-}
 
-export async function POST(request: Request) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'No token provided' },
-        { status: 401 }
-      );
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    const { startDate, endDate } = await request.json();
-
-    if (!startDate || !endDate) {
-      return NextResponse.json(
-        { error: 'Start date and end date are required' },
-        { status: 400 }
-      );
-    }
-
-    const user = await findUserById(decoded.userId);
-    if (!user || !user.fitnessGoal) {
-      return NextResponse.json(
-        { error: 'User fitness goal must be set before generating meal plan' },
-        { status: 400 }
-      );
-    }
-
-    const mealPlan = await generateMealPlan(
-      decoded.userId,
-      startDate,
-      endDate,
-      user.fitnessGoal
-    );
-
-    return NextResponse.json({ mealPlan });
-  } catch (error) {
-    console.error('Generate meal plan error:', error);
+  const user = await findUserById(userId);
+  if (!user || !user.fitnessGoal) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
+      { error: 'User fitness goal must be set before generating meal plan' },
+      { status: 400 }
     );
   }
-}
+
+  const mealPlan = await generateMealPlan(
+    userId,
+    startDate,
+    endDate,
+    user.fitnessGoal
+  );
+
+  return NextResponse.json({ mealPlan });
+});
